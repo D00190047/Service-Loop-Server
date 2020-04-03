@@ -15,7 +15,7 @@ describe('Get all users notifications', function () {
         let db_con_response = await database_connection.connect();
 
         let modules_array = ["PHP, JavaScript"];
-        await database_connection.create_notification("Tutorial request sent", "You have successfully requested a tutorial to cover " + modules_array.join(', ') + ". A tutor will be in contact with you as soon as possible.", "D00192082@student.dkit.ie", ["Tutorial request sent"], { post_id: "post._id", modules: ["PHP, JavaScript"] });
+        await database_connection.create_notification("Tutorial request sent", "You have requested tutorial for " + modules_array.join(', ') + ". A tutor will be in contact via email", "D00192082@student.dkit.ie", ["Tutorial request sent"], { post_id: "post._id", modules: ["PHP, JavaScript"] });
         let test_1_result = await database_connection.get_all_users_notifications("D00192082@student.dkit.ie", {is_tutor: false, user_modules: []});
         expect(test_1_result.error).toBe(false);
         done();
@@ -60,7 +60,7 @@ describe('Get all users notifications', function () {
         let db_con_response = await database_connection.connect();
         
         let modules_array = ["PHP, JavaScript"];
-        await database_connection.create_notification("Tutorial request sent", "You have successfully requested a tutorial to cover " + modules_array.join(', ') + ". A tutor will be in contact with you as soon as possible.", "D00192082@student.dkit.ie", ["Tutorial request sent"], { post_id: "post._id", modules: ["PHP, JavaScript"] });
+        await database_connection.create_notification("Tutorial request sent", "You have requested tutorial for " + modules_array.join(', ') + ". A tutor will be in contact via email", "D00192082@student.dkit.ie", ["Tutorial request sent"], { post_id: "post._id", modules: ["PHP, JavaScript"] });
         //await database_connection.create_notification_for_tutors("New tutorial request", "D00192082@student.dkit.ie" + " requested a tutorial for the " + modules_array.join(', ') + "modules. Please see the post in context.", ["Tutorial requested"], ["PHP, JavaScript"], "post._id");
         let test_3_result = await database_connection.get_all_users_notifications("D00192082@student.dkit.ie", {is_tutor: false, user_modules: []});
 
@@ -96,7 +96,7 @@ describe('Get all users notifications', function () {
         let db_con_response = await database_connection.connect();
         
         let modules_array = ["PHP, JavaScript"];
-        await database_connection.create_notification("Tutorial request sent", "You have successfully requested a tutorial to cover " + modules_array.join(', ') + ". A tutor will be in contact with you as soon as possible.", "D00192082@student.dkit.ie", ["Tutorial request sent"], { post_id: "post._id", modules: ["PHP, JavaScript"] });
+        await database_connection.create_notification("Tutorial request sent", "Tutorial request sent", "You have requested tutorial for " + modules_array.join(', ') + ". A tutor will be in contact via email", ["Tutorial request sent"], { post_id: "post._id", modules: ["PHP, JavaScript"] });
         await database_connection.create_notification_for_tutors("New tutorial request", "D00192082@student.dkit.ie", "D00192082@student.dkit.ie" + " requested a tutorial for the " + modules_array.join(', ') + "modules. Please see the post in context.", ["Tutorial requested"], ["PHP, JavaScript"], "post._id");
         
         //await database_connection.delete_notifications_by_email("D00192082@student.dkit.ie");
@@ -115,7 +115,7 @@ describe('Get all users notifications', function () {
         let db_con_response = await database_connection.connect();
         
         let modules_array = ["PHP, JavaScript"];
-        await database_connection.create_notification("Tutorial request sent", "You have successfully requested a tutorial to cover " + modules_array.join(', ') + ". A tutor will be in contact with you as soon as possible.", "D00192082@student.dkit.ie", ["Tutorial request sent"], { post_id: "post._id", modules: ["PHP, JavaScript"] });
+        await database_connection.create_notification("Tutorial request sent", "Tutorial request sent", "You have requested tutorial for " + modules_array.join(', ') + ". A tutor will be in contact via email", "D00192082@student.dkit.ie", ["Tutorial request sent"], { post_id: "post._id", modules: ["PHP, JavaScript"] });
         await database_connection.create_notification_for_tutors("New tutorial request", "D00192082@student.dkit.ie", "D00192082@student.dkit.ie" + " requested a tutorial for the " + modules_array.join(', ') + "modules. Please see the post in context.", ["Tutorial requested"], ["PHP, JavaScript"], "post._id");
         
         //await database_connection.delete_notifications_by_email("D00192082@student.dkit.ie");
@@ -134,7 +134,7 @@ describe('Get all users notifications', function () {
         let db_con_response = await database_connection.connect();
         
         let modules_array = ["PHP, JavaScript"];
-        await database_connection.create_notification("Tutorial request sent", "You have successfully requested a tutorial to cover " + modules_array.join(', ') + ". A tutor will be in contact with you as soon as possible.", "D00192082@student.dkit.ie", ["Tutorial request sent"], { post_id: "post._id", modules: ["PHP, JavaScript"] });
+        await database_connection.create_notification("Tutorial request sent", "Tutorial request sent", "You have requested tutorial for " + modules_array.join(', ') + ". A tutor will be in contact via email", ["Tutorial request sent"], { post_id: "post._id", modules: ["PHP, JavaScript"] });
         await database_connection.create_notification_for_tutors("New tutorial request", "D00192082@student.dkit.ie", "D00192082@student.dkit.ie" + " requested a tutorial for the " + modules_array.join(', ') + "modules. Please see the post in context.", ["Tutorial requested"], ["PHP, JavaScript"], "post._id");
         
         //await database_connection.delete_notifications_by_email("D00192082@student.dkit.ie");
@@ -165,7 +165,7 @@ describe('Get all notifications that a user is elegible for', function () {
         
         let modules_array = ["PHP, JavaScript"];
         
-        await database_connection.create_notification("Tutorial request sent", "You have successfully requested a tutorial to cover " + modules_array.join(', ') + ". A tutor will be in contact with you as soon as possible.", "D00192082@student.dkit.ie", ["Tutorial request sent"], { post_id: "post._id", modules: ["PHP, JavaScript"] });
+        await database_connection.create_notification("Tutorial request sent", "Tutorial request sent", "You have requested tutorial for " + modules_array.join(', ') + ". A tutor will be in contact via email", "D00192082@student.dkit.ie", ["Tutorial request sent"], { post_id: "post._id", modules: ["PHP, JavaScript"] });
         await database_connection.create_notification_for_tutors("New tutorial request", "D00192082@student.dkit.ie", "D00192082@student.dkit.ie" + " requested a tutorial for the " + modules_array.join(', ') + "modules. Please see the post in context.", ["Tutorial requested"], ["PHP, JavaScript"], "post._id");
         
         let test_1_result = await database_connection.get_all_elegible_posts("D00192082@student.dkit.ie", ["PHP", "Maths"]); 

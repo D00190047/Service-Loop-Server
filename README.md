@@ -32,20 +32,7 @@ git pull origin master
 npm install
 ```
 
-3.) In the node_modules folder, find the 'node-openssl-p12' module and in the lib folder open 'node-openssl-p12.js'. In this file, change the below code on line 14 to this.
-
-Change this:
-```
-dirPath = '/home/d00192082/ServiceLoopServer'
-```
-To this:
-```
-dirPath = path.join( process.cwd(), 'ssl')
-```
-
-The reason for doing this is because 'path.join(process.cwd(), 'ssl')' gives the wrong path when trying to create a digital certificate through an Express path. The reason or even if my assumption as to what the error is might not be correct but this fixes the problem on the live server and in a production enviornment that fix will cause issues.
-
-4.) In the node_modules folder, find the 'ringcaptcha-nodejs' module and in the lib folder open 'ringcaptcha.js'. In this file, change the below code on line 48 to this. 
+3.) In the node_modules folder, find the 'ringcaptcha-nodejs' module and in the lib folder open 'ringcaptcha.js'. In this file, change the below code on line 48 to this. 
 
 Change this:
 ```
@@ -58,44 +45,18 @@ form: {app_key: this.app_key, phone: mobile, api_key: this.api_key, code: data.c
 
 The reason for doing this is that module being used to implement the SMS verification code functionality has an error where when trying to verify a code, the module sets the code to undefined
 
-5.) In the 'index.js' file, we need to change to what port and IP address does the express server listen to. 
+4.) In the 'index.js' file, we need to change to what port and IP address does the express server listen to. 
 
 Change this:
 ```
-var server = app.listen(process.env.ALWAYSDATA_HTTPD_PORT, process.env.ALWAYSDATA_HTTPD_IP, async function () {
-  console.log('App started!');
-
-  Live_Updates_Controller = new Live_Updates(server, app);
-  Live_Updates_Controller.connect();
-});
+let localhost = false;
 ```
 To this:
 ```
-var server = app.listen(3001, async function () {
-  console.log('App started!');
-
-  Live_Updates_Controller = new Live_Updates(server, app);
-  Live_Updates_Controller.connect();
-});
+let localhost = true;
 ```
 
-6.) In the 'services' folder of the cloned repository, find the 'Live_Updates.js' file, change the way we connect to the websocket.
-
-Change this:
-```
-this.socket = require('socket.io').listen(server);
-this.socket.set("origins", "*:*");
-```
-To this:
-```
-server = require('http').Server(app);
-this.socket = require('socket.io')(server); 
-server.listen(80);
-```
-
-If we do not change this then your application on localhost will not be able to access the websocket for as of yet an unknown reason.
-
-6.) In the 'services' folder, find 'functions.js' and change the login credentials
+5.) In the 'services' folder, find 'functions.js' and change the login credentials
 
 Change this:
 ```
@@ -119,35 +80,7 @@ host: 'smtp.gmail.com',
         }
 ```
 
-7.) Next, in the same file, we change the "base_path" variable like below
-
-From this:
-```
-let base_path = path.join(__dirname, '../');
-//let base_path = '/';
-```
-
-To this:
-```
-//let base_path = path.join(__dirname, '../');
-let base_path = '/';
-```
-
-8.) In the 'services' folder, find 'Digital_Signature.js' and change change the "base_path" variable like below
-
-From this:
-```
-let base_path = path.join(__dirname, '../');
-//let base_path = '/';
-```
-
-To this:
-```
-//let base_path = path.join(__dirname, '../');
-let base_path = '/';
-```
-
-9.) And finally, launch the server!
+6.) And finally, launch the server!
 ```
 node index.js
 ```
@@ -170,74 +103,17 @@ To deploy the server to the live enviornment follow the below steps:
 
 Change this:
 ```
-var server = app.listen(3001, async function () {
-  console.log('App started!');
-
-  Live_Updates_Controller = new Live_Updates(server, app);
-  Live_Updates_Controller.connect();
-});
+let localhost = true;
 ```
 
 To this:
 ```
-var server = app.listen(process.env.ALWAYSDATA_HTTPD_PORT, process.env.ALWAYSDATA_HTTPD_IP, async function () {
-  console.log('App started!');
-
-  Live_Updates_Controller = new Live_Updates(server, app);
-  Live_Updates_Controller.connect();
-});
+let localhost = false;
 ```
-
-2.) In the 'services' folder, find the 'Live_Updates.js' file, change the way we connect to the websocket.
-
-Change this:
-```
-server = require('http').Server(app);
-this.socket = require('socket.io')(server); 
-server.listen(80);
-
-```
-
-To this:
-```
-this.socket = require('socket.io').listen(server);
-this.socket.set("origins", "*:*");
-
-```
-
-If we do not change this then your application on the live server will not be able to access the websocket as our host (alwaysdata.net) does not allow for port 80 to be used.
 
 3.) In the 'services' folder, find the 'functions.js' file, change the smtp details to our sendgrid details.
 
-4.) In the 'services' folder, find the 'functions.js' file, change the smtp details to our sendgrid details.
-
-From this:
-```
-//let base_path = path.join(__dirname, '../');
-let base_path = '/';
-```
-
-To this:
-```
-let base_path = path.join(__dirname, '../');
-//let base_path = '/';
-```
-
-5.) In the 'services' folder, find 'Digital_Signature.js' and change change the "base_path" variable like below
-
-From this:
-```
-//let base_path = path.join(__dirname, '../');
-let base_path = '/';
-```
-
-To this:
-```
-let base_path = path.join(__dirname, '../');
-//let base_path = '/';
-```
-
-6.) Upload the server WITHOUT the node_modules to the server
+4.) Upload the server WITHOUT the node_modules to the server
 
 ## Built With
 

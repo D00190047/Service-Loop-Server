@@ -68,4 +68,55 @@ let filter_registration_input = function validate_registration_input(users_full_
     }
 }
 
+//---------------- Forgot Password ----------------------
+let validate_password_input = function validate_password_input(users_email, users_password, users_password_confirm)
+{
+    const validator = require('validator');
+
+
+    if ( users_password.length === 0 || users_password_confirm.length === 0) {
+        return { error: true, response: "Field is empty" };
+        
+    }
+
+    if (validator.isEmail(users_email)) {
+        if (validator.equals(users_password, users_password_confirm)) {
+            if (users_password.match(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,128}$/)) 
+            {
+                console.log("password is valid");
+                return { error: false, response: "valid" };
+               
+            }
+            else {
+                return { error: true, response: "Password must contain a minimum of eight and maximum of 128 characters, at least one uppercase letter, one lowercase letter, one number and one special character." };
+            }
+        } else {
+            return { error: true, response: "'Password' and 'Confirm Password' do not match." };
+        }
+    } else {
+        return { error: true, response: "'" + validator.escape(users_email) + "' is not a valid email." };
+
+    }
+}
+
+let validate_user_phone = function validate_user_details(users_phone_number)
+{
+    const validator = require('validator');
+    if (users_phone_number.length === 0) {
+      
+        return { error: true, response: "Phone number must no be left empty" };
+    }
+    if (validator.isMobilePhone('' + users_phone_number.replace(/\s/g, ''), ['en-IE'])) {
+    
+        return { error: false, response: "valid" };
+    } else {
+      
+        return {error: true, response: "'" + validator.escape(users_phone_number) + "' is not a valid phone number."};
+    }
+
+
+}
+
 exports.validate_registration_input = filter_registration_input;
+exports.validate_user_phone = validate_user_phone;
+exports.validate_password_input = validate_password_input;

@@ -49,7 +49,7 @@ class database {
   //Function to close the mongoDB connection (80 active connections causes an error)
   disconnect() {
     mongoose.connection.close(function () {
-      console.log("ddd)");
+      console.log("closed db connection");
     });
   }
 
@@ -143,6 +143,7 @@ class database {
         });
     });
   }
+
 
   /**
    * A function that finds and deletes a user by email
@@ -294,18 +295,18 @@ class database {
    * that specifies wether the registration was successful or not and the "response" key will be an array that contains the post added and the response for
    * the normal notification added and the tutor notification added 
    */
-  async add_tutorial(request_title, request_description, request_modules, users_email) {
-    
+  async add_tutorial(request_title, request_description, request_modules, users_email, user_avatar) {
+
     const contenxt = this;
     const postModel = require('../models/post');
     let newPost = new postModel();
     const dateformat = require('dateformat');
 
     //Create New Users from Schema 'User.js' in models folder
-    let users_name = await this.getNameByEmail(users_email); 
+    let users_name = await this.getNameByEmail(users_email);
     newPost.std_name = users_name.users_full_name;
     newPost.std_email = users_email;
-    newPost.std_avatar = "https://d00192082.alwaysdata.net/ServiceLoopServer/resources/images/base_user.png";
+    newPost.std_avatar = user_avatar;
     newPost.post_title = request_title;
 
     newPost.post_posted_on = new Date();
@@ -317,39 +318,39 @@ class database {
 
     return new Promise((resolve, reject) => {
       try {
-newPost.save(async function (err, post) {
-        //If an error has occured, we do not create a notification but return an Object with the "error" key set to true and the error message in the "response" key
-        if (err) {
-          contenxt.disconnect();
-          resolve({ error: true, response: err });
-        } else {
-          console.log("This post")
-          console.log(post);
-          //If there is no error, we create a notification for the user stating that their request has been sent
-          let notification_response = await contenxt.create_notification("Tutorial request sent", "You have successfully requested a tutorial for the following modules: " + request_modules.join(', ') + ". A tutor will be in contact with you as soon as possible.", post.std_email, ["Tutorial request sent"], { post_id: post._id, modules: request_modules });
+        newPost.save(async function (err, post) {
+          //If an error has occured, we do not create a notification but return an Object with the "error" key set to true and the error message in the "response" key
+          if (err) {
+            contenxt.disconnect();
+            resolve({ error: true, response: err });
+          } else {
+            console.log("This post")
+            console.log(post);
+            //If there is no error, we create a notification for the user stating that their request has been sent
+            let notification_response = await contenxt.create_notification("Tutorial request sent", "You have successfully requested a tutorial for the following modules: " + request_modules.join(', ') + ".<br><br> A tutor will be in contact with you as soon as possible.", post.std_email, ["Tutorial request sent"], { post_id: post._id, modules: request_modules }, user_avatar);
 
-          //If the tutorial request notification succeeds, we create a notification for all tutors that can help with the requested modules 
-          if (!notification_response.error) {
-            let tutor_notification_response = await contenxt.create_notification_for_tutors("New tutorial request", post.std_email, post.std_email + " requested a tutorial for the " + request_modules.join(', ') + " modules. Please see the post in context.", ["Tutorial requested"], request_modules, post._id)
+            //If the tutorial request notification succeeds, we create a notification for all tutors that can help with the requested modules 
+            if (!notification_response.error) {
+              let tutor_notification_response = await contenxt.create_notification_for_tutors("New tutorial request", post.std_email, post.std_email + " requested a tutorial for the " + request_modules.join(', ') + " modules.<br><br> Please see the post in context.", ["Tutorial requested"], request_modules, post._id, user_avatar)
 
-            //If the notification is sent, we return an object with the "error" key set to false along with a response
-            if (!tutor_notification_response.error) {
-              contenxt.disconnect();
-              resolve({ error: false, debug_message: "Post created successfully.", response: [post, notification_response.response, tutor_notification_response.response] });
+              //If the notification is sent, we return an object with the "error" key set to false along with a response
+              if (!tutor_notification_response.error) {
+                contenxt.disconnect();
+                resolve({ error: false, debug_message: "Post created successfully.", response: [post, notification_response.response, tutor_notification_response.response] });
+              } else {
+                contenxt.disconnect();
+                resolve({ error: true, response: notification_response.response });
+              }
             } else {
               contenxt.disconnect();
               resolve({ error: true, response: notification_response.response });
             }
-          } else {
-            contenxt.disconnect();
-            resolve({ error: true, response: notification_response.response });
           }
-        }
-      });
-      } catch(ex) {
+        });
+      } catch (ex) {
         resolve(ex)
       }
-      
+
     });
   }
 
@@ -381,17 +382,20 @@ newPost.save(async function (err, post) {
    * @returns {Promise} This Promise will contain an object that contains 2 keys: error and response, the "error" key will be a boolean 
    * that specifies wether the registration was successful or not and the "response" key will contain the notification or a String if there is an error
    */
-  create_notification_for_tutors(notification_title, sender_email, notification_description, notification_tags, notification_modules, post_id) {
+  create_notification_for_tutors(notification_title, sender_email, notification_description, notification_tags, notification_modules, post_id, user_avatar = "https://d00192082.alwaysdata.net/ServiceLoopServer/resources/images/base_user.jpg") {
     const notificationModelSchema = require('../models/notifications');
     const dateformat = require('dateformat');
 
     let notificationModel = new notificationModelSchema();
     let notification_posted_on = new Date();
 
-    notificationModel.notification_avatar = "https://d00192082.alwaysdata.net/ServiceLoopServer/resources/images/base_user.png";
+    notificationModel.notification_avatar = user_avatar;
     notificationModel.notification_title = notification_title;
+
+    let regex = new RegExp("<br>", "g");
     notificationModel.notification_desc = notification_description;
-    notificationModel.notification_desc_trunc = notification_description.trunc(100);
+    notificationModel.notification_desc_trunc = notification_description.trunc(100).replace(regex, " ");
+
     notificationModel.notification_posted_on = notification_posted_on;
     notificationModel.notification_tags = notification_tags;
     notificationModel.notification_modules = notification_modules;
@@ -422,7 +426,7 @@ newPost.save(async function (err, post) {
    * @returns {Promise} This Promise will contain an object that contains 2 keys: error and response, the "error" key will be a boolean 
    * that specifies wether the registration was successful or not and the "response" key will contain the notification or a String if there is an error
    */
-  create_notification(notification_title, notification_description, users_email = "", notification_tags, extra_information = null) {
+  create_notification(notification_title, notification_description, users_email = "", notification_tags, extra_information = null, user_avatar = "https://d00192082.alwaysdata.net/ServiceLoopServer/resources/images/base_user.jpg") {
     const notificationModelSchema = require('../models/notifications');
     let notificationModel = new notificationModelSchema();
 
@@ -434,13 +438,13 @@ newPost.save(async function (err, post) {
     //We check if there is any extra information
     if (extra_information !== null) {
       //If the tags array contains the tag "Tutorial request sent, we add a post id to the notification model"
-      if (notification_tags.includes("Tutorial request sent") || notification_tags.includes("Tutorial requested") || notification_tags.includes("Tutorial request accepted") || notification_tags.includes("Tutorial agreement offered") || notification_tags.includes("Tutorial agreement accepted") || notification_tags.includes("Tutorial agreement rejected")) {
-        notificationModel.post_id = extra_information.post_id;
+      //if (notification_tags.includes("Tutorial request sent") || notification_tags.includes("Tutorial requested") || notification_tags.includes("Tutorial request accepted") || notification_tags.includes("Tutorial agreement offered") || notification_tags.includes("Tutorial agreement accepted") || notification_tags.includes("Tutorial agreement rejected") || notification_tags.includes("Tutorial started")) {
+      notificationModel.post_id = extra_information.post_id;
 
-        if (typeof extra_information.modules !== 'undefined') {
-          notificationModel.notification_modules = extra_information.modules;
-        }
+      if (typeof extra_information.modules !== 'undefined') {
+        notificationModel.notification_modules = extra_information.modules;
       }
+      //}
     }
 
     //If there is an email, we add it to the model
@@ -448,9 +452,10 @@ newPost.save(async function (err, post) {
       notificationModel.std_email = users_email;
     }
 
+    let regex = new RegExp("<br>", "g");
     notificationModel.notification_desc = notification_description;
-    notificationModel.notification_desc_trunc = notification_description.trunc(100);
-    notificationModel.notification_avatar = "https://d00192082.alwaysdata.net/ServiceLoopServer/resources/images/base_user.png";
+    notificationModel.notification_desc_trunc = notification_description.trunc(100).replace(regex, " ");
+    notificationModel.notification_avatar = user_avatar;
     notificationModel.notification_title = notification_title;
 
     notificationModel.notification_posted_on = notification_posted_on;
@@ -678,7 +683,9 @@ newPost.save(async function (err, post) {
     });
   }
   //TO BE CONTINUED
-  async accept_post(tutor_email, tutor_name, post_id) {
+  async accept_post(tutor_email, tutor_name, post_id, user_avatar) {
+    const Blockchain = require('./Blockchain');
+    const blockchain_controller = new Blockchain(global.blockchain_api_key);
     const postModel = require('../models/post');
     const filter = { _id: post_id };
     const update = { post_tutor_email: tutor_email, post_tutor_name: tutor_name, post_status: "In negotiation" };
@@ -688,13 +695,13 @@ newPost.save(async function (err, post) {
     console.log(post_status)
     if (!post_status.error) {
       //Tutor notification
-      let notification_response_tutor = await this.create_notification("Tutorial request accepted", "You have successfully accepted a tutorial. Please fill out the agreement form by clicking the below button or locating this tutorial in 'My tutorials'", tutor_email, ["Tutorial request accepted"], { post_id: post_id });
+      let notification_response_tutor = await this.create_notification("Tutorial request accepted", "You have accepted a tutorial.<br><br>Please fill out the agreement form by clicking the below button or locating this tutorial in 'My tutorials'", tutor_email, ["Tutorial request accepted"], { post_id: post_id }, user_avatar);
 
       if (!notification_response_tutor.error) {
         return new Promise((resolve, reject) => {
           postModel.findOneAndUpdate(filter, update, { new: true }).then(async result => {
-            let notification_response_student = await this.create_notification("Tutorial accepted", tutor_name + " has accepted to help you with the following tutorial '" + result.post_title + "'. The tutor will be in contact shortly.", result.std_email, ["Tutorial request accepted"], { post_id: post_id });
-
+            let notification_response_student = await this.create_notification("Tutorial accepted", tutor_name + " has accepted your request '" + result.post_title + "'.<br><br>The tutor will contact you via email.", result.std_email, ["Tutorial request accepted"], { post_id: post_id }, user_avatar);
+            blockchain_controller.add_transaction_to_blockchain(post_id, { title: "Tutorial accepted", content: "'" + tutor_name + "' has accepted to tutor '" + result.std_name + "' for the tutorial '" + result.post_title + "'" });
             this.disconnect();
             resolve({ error: false, response: { tutor_notification: notification_response_tutor.response, student_notification: notification_response_student, post: result } });
           });
@@ -761,7 +768,7 @@ newPost.save(async function (err, post) {
   }
 
   //TEST THIS
-  get_digital_certificate_details(email) { 
+  get_digital_certificate_details(email) {
     console.log(email)
     const userModel = require('../models/users');
 
@@ -841,25 +848,6 @@ newPost.save(async function (err, post) {
   //   });
   // }
 
-  //TEST THIS
-  is_room_booked(post_id, tutorial_room) {
-    console.log(post_id);
-    const postModel = require('../models/post');
-
-    const filter = { post_status: { "$in": ["In negotiation", "Ongoing"] }, tutorial_room: tutorial_room };
-
-    return new Promise((resolve, reject) => {
-      postModel.find(filter).then(result => {
-        console.log(result)
-        if (result.length) {
-          resolve(true);
-        } else {
-          resolve(false)
-        }
-      })
-    });
-  }
-
   update_post_agreement_status(post_id, update_object, room_taken = false) {
     console.log(post_id);
     const postModel = require('../models/post');
@@ -868,23 +856,9 @@ newPost.save(async function (err, post) {
     const update = update_object;
 
     return new Promise(async (resolve, reject) => {
-      let is_room_booked;
-
-      if(!room_taken) {
-        is_room_booked = await this.is_room_booked(post_id, update_object.tutorial_room);
-      } else {
-        is_room_booked = false;
-      }
-      
-
-      if (!is_room_booked) {
-        //resolve({error: false, response: "ddd"})
-        postModel.findOneAndUpdate(filter, update).then(result => {
-          resolve({error: false, response: result});
-        })
-      } else {
-        resolve({error: true, response: 'Room ' + update_object.tutorial_room + " is already booked, please choose another room."})
-      } 
+      postModel.findOneAndUpdate(filter, update, { new: true }).then(result => {
+        resolve({ error: false, response: result });
+      });
     });
   }
 
@@ -895,7 +869,7 @@ newPost.save(async function (err, post) {
     const update = { post_agreement_url: agreement_url, tutor_signature: tutor_signature_data };
 
     return new Promise((resolve, reject) => {
-      postModel.findOneAndUpdate(filter, update).then(result => {
+      postModel.findOneAndUpdate(filter, update, { new: true }).then(result => {
         resolve(result);
       })
     });
@@ -905,23 +879,34 @@ newPost.save(async function (err, post) {
     const postModel = require('../models/post');
     const fs = require('fs');
     const path = require('path');
-    let base_path = path.join(__dirname, '../');
+    let base_path;
+
+    //For debugging purposes, if on localhost, we use a different path
+    if (global.localhost) {
+      base_path = '';
+    } else {
+      base_path = path.join(__dirname, '../');
+    }
 
     const filter = { _id: post_id };
     const update = { post_agreement_url: "", tutor_signature: "", post_agreement_offered: false };
 
     return new Promise((resolve, reject) => {
-      postModel.findOneAndUpdate(filter, update).then(async (result) => {
+      postModel.findOneAndUpdate(filter, update, { new: true }).then(async (result) => {
         fs.unlinkSync(base_path + 'resources/pdfs/agreement_' + post_id + '_signed.pdf');
-        let student_notification = await this.create_notification("Agreement rejected", "You have successfully rejected the agreement for the tutorial, '" + result.post_title + "'. Please get in contact with your tutor, '" + result.post_tutor_name + "' via email at '" + result.post_tutor_email + "' to arrange a new agreement.", result.std_email, ["Tutorial agreement rejected"], { post_id: post_id });
-        let tutor_notification = await this.create_notification("Agreement rejected", "The student, '" + result.std_name + "' has rejected the agreement for the tutorial, '" + result.post_title + "'. Please get in contact with him/her, via email at '" + result.std_email + "' to arrange a new agreement.", result.post_tutor_email, ["Tutorial agreement rejected"], { post_id: post_id });
+        let student_notification = await this.create_notification("Agreement rejected", "You have successfully rejected the agreement for the tutorial, '" + result.post_title + "'.<br><br>Please get in contact with your tutor, '" + result.post_tutor_name + "' via email at '" + result.post_tutor_email + "' to arrange a new agreement.", result.std_email, ["Tutorial agreement rejected"], { post_id: post_id }, result.std_avatar);
+        let tutor_notification = await this.create_notification("Agreement rejected", "The student, '" + result.std_name + "' has rejected the agreement for the tutorial, '" + result.post_title + "'.<br><br>Please get in contact with him/her, via email at '" + result.std_email + "' to arrange a new agreement.", result.post_tutor_email, ["Tutorial agreement rejected"], { post_id: post_id }, result.std_avatar);
+
+        const Blockchain = require('./Blockchain');
+        const blockchain_controller = new Blockchain(global.blockchain_api_key);
+        blockchain_controller.add_transaction_to_blockchain(post_id, { title: "Agreement rejected", content: "The student, '" + result.std_name + "' has rejected the agreement for the tutorial, '" + result.post_title + "'. The tutor must now create a new agreement." });
+
         resolve({ error: false, response: "Tutorial rejected successfully.", updated_tutorial: result, student_notification: student_notification, tutor_notification: tutor_notification });
       })
     });
   }
 
   update_user(email, update) {
-    console.log("Test");
     console.log(email);
     console.log(update)
     const userSchema = require('../models/users');
@@ -935,6 +920,250 @@ newPost.save(async function (err, post) {
         .catch((exception) => {
           resolve({ error: true, response: exception });
         });
+    });
+  }
+
+  //TEST THIS
+  //----------------------------------- Forgot Password --------------------------------------------
+  find_user_by_email(email) {
+    return new Promise((resolve, reject) => {
+      userModel.findOne({ user_email: email })
+        .then((newUser) => {
+          if (newUser) {
+            resolve({ error: false, response: newUser });
+            // console.log("\n console log in find_user_by_email( )\n"+newUser+"\n")
+          } else {
+            if (newUser === null) {
+              resolve({ error: false, response: "No user found!" });
+            } else {
+              resolve({ error: true, response: "error ocurred" });
+            }
+          }
+        }).catch((exception) => {
+          resolve({ error: true, response: exception });
+        });
+    });
+  }
+  begin_tutorial(post_id) {
+    const postModel = require('../models/post');
+
+    const filter = { _id: post_id };
+
+    return new Promise((resolve, reject) => {
+      postModel.findOneAndUpdate(filter, { tutorial_started: true }, { new: true }).then(result => {
+        resolve(result);
+      })
+        .catch((exception) => {
+          resolve({ error: true, response: exception });
+        });
+    });
+  }
+
+  //TEST THIS
+  finish_tutorial(post_id) {
+    const postModel = require('../models/post');
+
+    const filter = { _id: post_id };
+
+    return new Promise((resolve, reject) => {
+      postModel.findOneAndUpdate(filter, { post_status: "Done", tutorial_finished: true }, { new: true }).then(result => {
+        resolve(result);
+      })
+        .catch((exception) => {
+          resolve({ error: true, response: exception });
+        });
+    });
+  }
+
+  //TEST THIS
+  rate_tutor(tutor_email, rating, previous_ratings, total_ratings) {
+    const filter = { user_email: tutor_email };
+
+    return new Promise((resolve, reject) => {
+      userModel.findOneAndUpdate(filter, { tutor_rating: rating, past_ratings: previous_ratings, total_ratings: total_ratings }, { new: true }).then(result => {
+        resolve(result);
+      })
+        .catch((exception) => {
+          resolve({ error: true, response: exception });
+        });
+    });
+  }
+
+  change_user_password(email, password) {
+
+    const filter = { user_email: email };
+    const update = { user_password: password };
+
+
+    //update user
+    userModel.findOneAndUpdate(filter, update).then(result => {
+      console.log("Password changed")
+      this.disconnect();
+      //resolve({ error: false, response: "New Password successfully changed!" });
+    })
+      .catch((exception) => {
+        this.disconnect();
+        // resolve({ error: true, response: exception });
+      });
+
+
+  }
+
+
+  change_user_phone(email, phone_number) {
+    const filter = { user_email: email };
+    const update = { user_phone_number: phone_number };
+
+    const detail_input = require('./registration/filter_registration_input');
+    let valid = detail_input.validate_user_phone(phone_number);
+
+    if (!valid.error) {
+
+      return new Promise((resolve, reject) => {
+        userModel.findOneAndUpdate(filter, update).then(result => {
+          this.disconnect();
+          resolve({ error: false, response: "New Profile details successfully changed!" });
+        }).catch((exception) => {
+          this.disconnect();
+          resolve({ error: true, response: exception });
+        });
+
+
+      });
+    }
+    else {
+      return new Promise((resolve, reject) => {
+        let response = "Phone number is not valid";
+        resolve(response);
+      });
+    }
+
+  }
+
+  //---------------------------------------------------------------------------------------------------------------
+  //TEST THIS
+  find_tutored_tutorials(email) {
+    const postModel = require('../models/post');
+
+    return new Promise((resolve, reject) => {
+      //Find tutorials tutored by user
+      let tutored_tutorials_count;
+
+      let my_open_tutorials = 0;
+      let my_pending_tutorials = 0;
+      let my_ongoing_tutorials = 0;
+      let my_done_tutorials = 0;
+
+      let tutored_tutorials_pending = 0;
+      let tutored_tutorials_ongoing = 0;
+      let tutored_tutorials_done = 0;
+
+      postModel.find({ $or: [{ std_email: email }, { post_tutor_email: email }] }).then(results => {
+        if (results.length) {
+          for (let i = 0; i < results.length; i++) {
+            if (results[i].post_status == "Open" && results[i].std_email == email) {
+              my_open_tutorials++;
+            }
+
+            if (results[i].post_status == "Pending" && results[i].post_tutor_email == email) {
+              tutored_tutorials_pending++;
+            } else if (results[i].post_status == "Pending" && results[i].std_email == email) {
+              my_pending_tutorials++;
+            }
+
+            if (results[i].post_status == "Ongoing" && results[i].post_tutor_email == email) {
+              tutored_tutorials_ongoing++;
+            } else if (results[i].post_status == "Ongoing" && results[i].std_email == email) {
+              my_ongoing_tutorials++;
+            }
+
+            if (results[i].post_status == "Done" && results[i].post_tutor_email == email) {
+              tutored_tutorials_done++;
+            } else if (results[i].post_status == "Done" && results[i].std_email == email) {
+              my_done_tutorials++;
+            }
+          }
+        } else {
+          console.log("Empty :(");
+        }
+
+        tutored_tutorials_count = { my_tutorials: { open_count: my_open_tutorials, pending_count: my_pending_tutorials, ongoing_count: my_ongoing_tutorials, done_count: my_done_tutorials }, my_tutored_tutorials: { pending_count: tutored_tutorials_pending, ongoing_count: tutored_tutorials_ongoing, done_count: tutored_tutorials_done } };
+
+        console.log(tutored_tutorials_count);
+        resolve(tutored_tutorials_count);
+      }).catch((exception) => {
+        resolve({ error: true, response: exception });
+      });
+    });
+  }
+
+  async delete_tutorial(post_id) {
+    const postModel = require('../models/post');
+
+    return new Promise((resolve, reject) => {
+      postModel.deleteOne({ _id: post_id }).then(async (result) => {
+        resolve("Deleted");
+      });
+    });
+  }
+
+  get_avatar(email, is_tutor) {
+    const postModel = require('../models/post');
+
+    let filter;
+
+    if (is_tutor) {
+      filter = { std_email: email };
+    } else {
+      filter = { post_tutor_email: email };
+    }
+
+    return new Promise((resolve, reject) => {
+      postModel.find(filter).then(result => {
+        console.log(result)
+        resolve(result);
+      });
+    });
+  }
+
+  update_post(post_id, update) {
+    const postModel = require('../models/post');
+
+    let filter = { _id: post_id };
+
+    return new Promise((resolve, reject) => {
+      postModel.findOneAndUpdate(filter, update, { new: true }).then(result => {
+        resolve(result);
+      });
+    });
+  }
+
+  check_room_availability(start_date, start_time, end_time) {
+    const postModel = require('../models/post');
+
+    let filter = { tutorial_finished: false, post_agreement_offered: true };
+
+    return new Promise((resolve, reject) => {
+      postModel.find(filter).then(result => {
+        console.log(result)
+        let room_booked = false;
+        const moment = require('moment-timezone');
+        
+        let tutorial_start_date = moment(new Date(start_date + ' ' + start_time)).tz('Europe/Dublin').format('YYYY-MM-DD HH:mm');
+        let tutorial_end_date = moment(new Date(start_date + ' ' + end_time)).tz('Europe/Dublin').format('YYYY-MM-DD HH:mm');
+
+        for (let i = 0; i < result.length; i++) {
+          let other_tutorial_start_date = moment(new Date(result[0].tutorial_date + ' ' + result[0].tutorial_time)).tz('Europe/Dublin').format('YYYY-MM-DD HH:mm');
+          let other_tutorial_end_date = moment(new Date(result[0].tutorial_date + ' ' + result[0].tutorial_end_time)).tz('Europe/Dublin').format('YYYY-MM-DD HH:mm');
+
+          if ((tutorial_start_date < other_tutorial_end_date) && (other_tutorial_start_date <= tutorial_end_date)) {
+            room_booked = true;
+            resolve(room_booked)
+          }
+        }
+
+        resolve(room_booked);
+      });
     });
   }
 }

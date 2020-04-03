@@ -1,7 +1,7 @@
 console.log('Example app started!')
 var XooaClient = require("xooa-sdk");
 var xooaClient = new XooaClient();
-xooaClient.setApiToken("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBcGlLZXkiOiJZTjdXMUowLUpINk1CVjctTkRUWEEzTi04NEJYWU1XIiwiQXBpU2VjcmV0IjoiWkJzMGVwWTdCWFlQVm9QIiwiUGFzc3BocmFzZSI6IjIxZTI4MDlkOGI5NjBlNWIyMjkxYzY2YmEzYjMzNDdjIiwiaWF0IjoxNTgwMzk2MDk3fQ.WJNZnfXuATzZLdfVBKwyI3tiKY_JFehyPC6LQ0kaMSU");
+xooaClient.setApiToken("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBcGlLZXkiOiJBMjBNM1haLTRDSzRNTjUtSkNRMDJNQi00WkFFSFAzIiwiQXBpU2VjcmV0IjoianUyUjRTbHNpMzVPakdjIiwiUGFzc3BocmFzZSI6IjIyNDBjNmEzMjJjMjRlNzgyMmM1YmM3ZTM1Y2RkNWI0IiwiaWF0IjoxNTgyNjM1Mjc2fQ.Hi92qvQhQW4R2Sh2OuUMTNyx4dY69wnyJq6Z49maOsE");
 
  async function add_new_identity_to_blockchain(identity_name, name, value) {
  	var newIdentity = {
@@ -23,8 +23,8 @@ xooaClient.setApiToken("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBcGlLZXkiOiJZTjd
 
 
 //Set a value in blockchain
-async function add_transaction_to_blockchain(data_to_add) {
-  var [error, pendingResponse, data] = await xooaClient.invoke("add_transaction", {}, { args: data_to_add})
+async function add_transaction_to_blockchain(key, data) {
+  var [error, pendingResponse, data] = await xooaClient.invoke("add_transaction", {}, { args: [key, data]})
   console.log(error, pendingResponse, data);
 }
 
@@ -36,16 +36,19 @@ async function get_from_blockchain_by_tx_id(tx_id) {
 
 async function get_from_blockchain_by_block_number(block_number) {
   var [error, pendingResponse, data] = await xooaClient.getBlockByNumber(block_number, {});
-console.log(error, pendingResponse, data);
+  console.log(error, pendingResponse, data);
 }
 
-async function get_by_key() {
-  var [error, pendingResponse, data] = await xooaClient.invoke("get_by_key", {}, { args: ["CA2", "This is a test for CA2"] });
-console.log(error, pendingResponse, data);
+async function get_by_key(key) {
+  var [error, pendingResponse, data] = await xooaClient.invoke("get_by_key", {}, { args: [key] });
+  console.log(error, pendingResponse, data);
+  console.log(data.payload[0].Timestamp)
+  let date_created = new Date(data.payload[0].Timestamp.seconds.low * 1000);
+  console.log(date_created)
 }
 
-add_new_identity_to_blockchain("Frank Keenan User", "Frank Keenan", "")
+//add_new_identity_to_blockchain("Frank Keenan User", "Frank Keenan", "");
 //get_from_blockchain_by_block_number("66");
-//get_from_blockchain_by_tx_id('f2caf767581ac753b709262e514662ca9812401a22bea2276ff34c7a688adf17')
-//add_transaction_to_blockchain(["CA2", "This is a test for CA2"]);
-//get_by_key();
+//get_from_blockchain_by_tx_id('562a08e7c3c50a92ad2794ef4cd48300aec534a46a54a2ff10dc2f021e30871f');
+add_transaction_to_blockchain("5e53c193c2bff749d0cca111", {title: "Agreement generated", content: "ANOTHER ONEEEEEEEEEEEEEEEEEEEEEEEEEEEEE!!!"});
+//get_by_key("5e53c193c2bff749d0cca109");

@@ -9,8 +9,14 @@ class Digitally_Sign {
     //"java -jar /home/d00192082/ServiceLoopServer/resources/java/JSignPdf.jar /home/d00192082/ServiceLoopServer/resources/pdfs/agreement_5e428eff1700d139c09167d2.pdf -v --visible-signature -d /home/d00192082/ServiceLoopServer/resources/pdfs -a --bg-path /home/d00192082/ServiceLoopServer/resources/images/adobe_watersign.png -page 1000 -kst PKCS12 -ksf /home/d00192082/ServiceLoopServer/ssl/client_5e41bc1b78c9ad2fa0dadac7.p12 -ksp pycnaMLBLp"
     async digitally_sign_pdf(pdf_path, digital_certificate, append_signature = false) {
         const path = require('path');
-        let base_path = path.join(__dirname, '../');
-        //let base_path = '/';
+        let base_path;
+
+        //For debugging purposes, if on localhost, we use a different path
+        if (global.localhost) {
+            base_path = '';
+        } else {
+            base_path = path.join(__dirname, '../');
+        }
 
         let digitally_sign_pdf_once_command = `java -jar ${base_path}resources/java/JSignPdf.jar ${base_path + pdf_path} -v --visible-signature -d ${base_path}resources/pdfs -a --bg-path ${base_path}resources/images/adobe_watersign.png -page 1000 -kst PKCS12 -ksf ${base_path + digital_certificate.tutor.certificate_path} -ksp ${digital_certificate.tutor.certificate_password} 2>&1`;
         let digitally_sign_pdf_twice_command;
@@ -18,7 +24,7 @@ class Digitally_Sign {
         if (append_signature) {
             digitally_sign_pdf_twice_command = `java -jar ${base_path}resources/java/JSignPdf.jar ${base_path + pdf_path.substring(0, pdf_path.length - 4) + '_signed.pdf'} -v --visible-signature -d ${base_path}resources/pdfs -llx 612 -lly 0 -urx 500 -ury 100 -a --append --bg-path ${base_path}resources/images/adobe_watersign.png -page 1000 -kst PKCS12 -ksf ${base_path + digital_certificate.student.certificate_path} -ksp ${digital_certificate.student.certificate_password} 2>&1`;
         }
-        
+
         //return base_path;
         return new Promise((resolve, reject) => {
             //works
@@ -105,38 +111,56 @@ class Digitally_Sign {
         });
     }
 
-    async verify_digital_signature(pdf, digital_certificate) {
+    async verify_digital_signature(pdf, data) {
+
         //2>&1 <--- Add to command MAYBE
-        let compromised_agreements = [{ pdf: "test.pdf", party_1_digital_certificate: { digital_certificate: "", digital_certificate_password: "" }, party_2_digital_certificate: { digital_certificate: "", digital_certificate_password: "" } }];
         const path = require('path');
         //let base_path = path.join(__dirname, '../');
-        let base_path = '';
+        let base_path;
 
-        let check_one_digital_signature_command = `java -jar ${base_path}resources/java/Verifier.jar ${base_path + pdf} -kf ${base_path + digital_certificate.user_digital_certificate_path} -kp ${digital_certificate.user_digital_certificate_password} -kt PKCS12`;
+        //For debugging purposes, if on localhost, we use a different path
+        if (global.localhost) {
+            base_path = '';
+        } else {
+            base_path = path.join(__dirname, '../');
+        }
+ 
+        let check_one_digital_signature_command = [`java -jar ${base_path}resources/java/Verifier.jar ${base_path + pdf} -kf ${base_path + data.party_1_digital_certificate.digital_certificate} -kp ${data.party_1_digital_certificate.digital_certificate_password} -kt PKCS12`];
+
+        if (typeof data.party_2_digital_certificate !== 'undefined') {
+            check_one_digital_signature_command.push(`java -jar ${base_path}resources/java/Verifier.jar ${base_path + pdf} -kf ${base_path + data.party_2_digital_certificate.digital_certificate} -kp ${data.party_2_digital_certificate.digital_certificate_password} -kt PKCS12`);
+        }
 
         return new Promise((resolve, reject) => {
-            exec(check_one_digital_signature_command,
-                (error, stdout, stderr) => {
-                    if (error !== null) {
-                        if (error.code !== 60) {
-                            //console.log('stdout: ' + stdout);
-                            //console.log('stderr: ' + stderr);
-                            //console.log('exec error: ' + error);
-                            compromised_pdfs.push(all_user_pdfs[i]);
-                        } else {
-                            resolve({ error: false, response: "Digital signature is valid" })
+            for (let i = 0; i < check_one_digital_signature_command.length; i++) {
+                exec(check_one_digital_signature_command[i],
+                    (error, stdout, stderr) => {
+                        if (error !== null) {
+                            //60 error code means certificate cannot be verified (because it was created by us) and 61 means it is expired??? IDK how that is possible -_-
+                            if (error.code !== 60 && error.code !== 61) {
+                                //console.log('stdout: ' + stdout);
+                                //console.log('stderr: ' + stderr);
+                                //console.log('exec error: ' + error);
+                                let error_response = this.check_digital_signature_error_code(error.code) 
+                                resolve({ error: true, response: { message: error_response, pdf: pdf, error_code: error.code } });
+                            }
                         }
-                    }
-                });
+
+                        if (i === check_one_digital_signature_command.length - 1) {
+                            resolve({ error: false, response: "Digital signatures are valid." });
+                        }
+                    });
+            }
+
         });
 
 
     }
 
-    check_digital_signature_error_code(error_code) {
+    check_digital_signature_error_code(error_code) { 
         let error_message;
 
-        switch (error.code) {
+        switch (error_code) {
             case 10:
                 //SIG_STAT_CODE_WARNING_NO_SIGNATURE 
                 error_message = "Warning! The PDF has no signatures. Warning code 10.";

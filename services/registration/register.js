@@ -24,8 +24,10 @@ let create_new_user = async function create_new_user(users_full_name, users_pass
      * @returns {Promise} This Promise will contain an object that contains 2 keys: error and response, the "error" key will be a boolean 
      * that specifies wether the registration was successful or not and the "response" key will be a String that contains the hashed password from the function
      */
-    const users_password_hash = (users_password) => { 
+    const users_password_hash = (users_password) => {
         return new Promise((resolve, reject) => {
+            // resolve({ error: false, response: "12345", type: "password_hash" });
+            // return;
             const bcrypt = require('bcrypt');
             const saltRounds = 10;
 
@@ -120,15 +122,15 @@ let create_new_user = async function create_new_user(users_full_name, users_pass
     }
 
 
-
-
-
-
-
-
     //Setup the user data validation
+                                                                                                                                                                                                                                                                                                                                                                                                                   
     const validator = require('validator');
     const filter_registration_input = require('./filter_registration_input');
+
+    const fs = require('fs');
+    fs.copyFile('/home/d00192082/ServiceLoopServer/resources/images/base_user.jpg', '/home/d00192082/ServiceLoopServer/resources/images/' + users_email + '.jpg', (err) => {
+        if (err) throw err;
+    });
 
     //Valiate user data
     let filtering_response = await filter_registration_input.validate_registration_input(users_full_name, users_password, users_password_confirm, users_email, users_phone_number, database_connection);
@@ -170,15 +172,16 @@ let create_new_user = async function create_new_user(users_full_name, users_pass
 
                     //Update the user with the new details 
                     let update_response = await database_connection.update_new_users_details(users_email, password_hash, digital_certificate_path, digital_certificate_password);
-                    const blockchain = require('../Blockchain');
-                    const blockchain_connection = new blockchain('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBcGlLZXkiOiJOTkNFSkZTLVM3NjRYMUgtSkdOUlhTUC05QkVZMjZLIiwiQXBpU2VjcmV0IjoiVUYwRGhrVTNmMnQ2VHBqIiwiUGFzc3BocmFzZSI6ImZlODgxNDZhOTBkNWYwMmViNTcxYWUwMzI1YTFjZjk1IiwiaWF0IjoxNTgxNTA2MTM4fQ.bnBYyoX5oKypA2uFGK0D6oTHKz8UiYETdZ6QZDQK4-o');
+                    const Blockchain = require('../Blockchain');
+                    const blockchain_connection = new Blockchain(global.blockchain_api_key);
 
                     let blockchain_user_added = await blockchain_connection.add_new_identity_to_blockchain(users_full_name + " User", users_full_name, "Student");
                     console.log(blockchain_user_added);
-                    
+
                     if (!blockchain_user_added.error) {
                         console.log("User updayted")
-                        await database_connection.update_user(users_email, { user_blockchain_api_token: blockchain_user_added.response.ApiToken, user_blockchain_id: blockchain_user_added.response.Id, user_blockchain_identity_name: blockchain_user_added.response.IdentityName });
+
+                        await database_connection.update_user(users_email, { user_avatar: "https://d00192082.alwaysdata.net/ServiceLoopServer/resources/images/" + users_email + ".jpg", user_blockchain_api_token: blockchain_user_added.response.ApiToken, user_blockchain_id: blockchain_user_added.response.Id, user_blockchain_identity_name: blockchain_user_added.response.IdentityName });
                     }
 
                     database_connection.disconnect();
